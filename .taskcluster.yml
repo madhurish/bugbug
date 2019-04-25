@@ -39,7 +39,7 @@ tasks:
           features:
             dind: true
           maxRunTime: 10800
-          image: "docker:1.18"
+          image: "docker:1.6.2-dind"
           command:
             - "docker"
             - "info"
