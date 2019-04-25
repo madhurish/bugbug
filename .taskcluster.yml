@@ -43,6 +43,8 @@ tasks:
           command:
             - "docker"
             - "info"
+          volumes:
+            - "/var/run/docker.sock:/var/run/docker.sock"
           artifacts:
             public/bugbug:
               expires: {$fromNow: '2 weeks'}
