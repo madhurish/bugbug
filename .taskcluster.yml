@@ -38,13 +38,12 @@ tasks:
         payload:
           capabilities:
             privileged: true
+            dind: true
           maxRunTime: 10800
           image: docker
           command:
             - "docker"
             - "info"
-          volumes:
-            - "/var/run/docker.sock:/var/run/docker.sock"
           artifacts:
             public/bugbug:
               expires: {$fromNow: '2 weeks'}
@@ -52,6 +51,7 @@ tasks:
               type: directory
         scopes:
           - docker-worker:capability:privileged
+          - docker-worker:capability:dind
         metadata:
           name: bugbug docker build
           description: bugbug docker build
