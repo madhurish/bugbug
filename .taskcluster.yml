@@ -43,7 +43,7 @@ tasks:
           command:
             - "/bin/sh"
             - "-lcxe"
-            - "apt-get install sysbench && sysbench --test=fileio --threads=4 --file-test-mode=seqrewr prepare && sysbench --test=fileio --threads=1 --file-test-mode=rndrw run"
+            - "apt-get update && apt-get install -y sysbench && sysbench --test=fileio --threads=4 --file-test-mode=seqrewr prepare && sysbench --test=fileio --threads=1 --file-test-mode=rndrw run"
           artifacts:
             public/bugbug:
               expires: {$fromNow: '2 weeks'}
@@ -68,7 +68,7 @@ tasks:
           command:
             - "/bin/sh"
             - "-lcxe"
-            - "apt-get install sysbench && sysbench --test=fileio --threads=4 --file-test-mode=seqrewr prepare && sysbench --test=fileio --threads=1 --file-test-mode=rndrw run"
+            - "apt-get update && apt-get install -y sysbench && sysbench --test=fileio --threads=4 --file-test-mode=seqrewr prepare && sysbench --test=fileio --threads=1 --file-test-mode=rndrw run"
           artifacts:
             public/bugbug:
               expires: {$fromNow: '2 weeks'}
