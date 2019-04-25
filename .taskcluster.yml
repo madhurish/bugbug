@@ -30,121 +30,7 @@ tasks:
   in:
     $if: 'tasks_for in ["github-pull-request", "github-push"]'
     then:
-      - taskId: {$eval: as_slugid("lint_task")}
-        created: {$fromNow: ''}
-        deadline: {$fromNow: '1 hour'}
-        provisionerId: aws-provisioner-v1
-        workerType: github-worker
-        payload:
-          maxRunTime: 3600
-          image: python
-          command:
-            - "/bin/bash"
-            - "-lcx"
-            - "git clone ${repository} &&
-               cd bugbug &&
-               git checkout ${head_rev} &&
-               pip install -r test-requirements.txt &&
-               pre-commit run -a" # TODO Be smarter and run only on modified files
-        metadata:
-          name: bugbug lint
-          description: bugbug lint
-          owner: ${user}@users.noreply.github.com
-          source: ${repository}/raw/${head_rev}/.taskcluster.yml
-
-      - $if: 'tasks_for == "github-push"'
-        then:
-          taskId: {$eval: as_slugid("version_check_task")}
-          created: {$fromNow: ''}
-          deadline: {$fromNow: '1 hour'}
-          provisionerId: aws-provisioner-v1
-          workerType: github-worker
-          payload:
-            maxRunTime: 3600
-            image: python
-            command:
-              - "/bin/bash"
-              - "-lcx"
-              - "git clone ${repository} &&
-                 cd bugbug &&
-                 git checkout ${head_rev} &&
-                 python infra/version_check.py"
-          metadata:
-            name: bugbug tag version check
-            description: bugbug tag version check
-            owner: ${user}@users.noreply.github.com
-            source: ${repository}/raw/${head_rev}/.taskcluster.yml
-
-      - taskId: {$eval: as_slugid("tests_task")}
-        created: {$fromNow: ''}
-        deadline: {$fromNow: '1 hour'}
-        provisionerId: aws-provisioner-v1
-        workerType: github-worker
-        payload:
-          maxRunTime: 3600
-          image: python
-          command:
-            - "/bin/bash"
-            - "-lcx"
-            - "git clone ${repository} &&
-               cd bugbug &&
-               git checkout ${head_rev} &&
-               pip install -r requirements.txt &&
-               pip install -r test-requirements.txt &&
-               python -m pytest tests/test_*.py"
-        metadata:
-          name: bugbug tests
-          description: bugbug tests
-          owner: ${user}@users.noreply.github.com
-          source: ${repository}/raw/${head_rev}/.taskcluster.yml
-
-      - taskId: {$eval: as_slugid("rollback_test_task")}
-        created: {$fromNow: ''}
-        deadline: {$fromNow: '1 hour'}
-        provisionerId: aws-provisioner-v1
-        workerType: github-worker
-        payload:
-          maxRunTime: 3600
-          image: python
-          command:
-            - "/bin/bash"
-            - "-lcx"
-            - "git clone ${repository} &&
-               cd bugbug &&
-               git checkout ${head_rev} &&
-               pip install -r requirements.txt &&
-               python -c 'from bugbug import bugzilla, db; db.download()' &&
-               python -m bugbug.bug_snapshot"
-        metadata:
-          name: bugbug rollback test
-          description: bugbug rollback test
-          owner: ${user}@users.noreply.github.com
-          source: ${repository}/raw/${head_rev}/.taskcluster.yml
-
-      - taskId: {$eval: as_slugid("packaging_test_task")}
-        created: {$fromNow: ''}
-        deadline: {$fromNow: '1 hour'}
-        provisionerId: aws-provisioner-v1
-        workerType: github-worker
-        payload:
-          maxRunTime: 3600
-          image: python
-          command:
-            - "/bin/bash"
-            - "-lcx"
-            - "git clone ${repository} &&
-               cd bugbug &&
-               git checkout ${head_rev} &&
-               pip install -r requirements.txt &&
-               python setup.py sdist &&
-               pip install dist/bugbug-$(cat VERSION).tar.gz"
-        metadata:
-          name: bugbug packaging test
-          description: bugbug packaging test
-          owner: ${user}@users.noreply.github.com
-          source: ${repository}/raw/${head_rev}/.taskcluster.yml
-
-      - taskId: {$eval: as_slugid("docker_build")}
+      - taskId: {$eval: as_slugid("docker_build_privileged")}
         created: {$fromNow: ''}
         deadline: {$fromNow: '3 hours'}
         provisionerId: aws-provisioner-v1
@@ -153,15 +39,11 @@ tasks:
           capabilities:
             privileged: true
           maxRunTime: 10800
-          image: mozilla/taskboot:latest
+          image: ubuntu
           command:
             - "/bin/sh"
             - "-lcxe"
-            - "git clone ${repository} /code &&
-               cd /code &&
-               git checkout ${head_rev} &&
-               python http_service/download_models.py &&
-               taskboot --target /code build-compose --registry=registry.hub.docker.com --write /images"
+            - "apt-get install sysbench && sysbench --test=fileio --threads=4 --file-test-mode=seqrewr prepare && sysbench --test=fileio --threads=1 --file-test-mode=rndrw run"
           artifacts:
             public/bugbug:
               expires: {$fromNow: '2 weeks'}
@@ -175,98 +57,25 @@ tasks:
           owner: ${user}@users.noreply.github.com
           source: ${repository}/raw/${head_rev}/.taskcluster.yml
 
-      - $if: 'tasks_for == "github-push" && head_branch[:10] == "refs/tags/"'
-        then:
-          dependencies:
-            - {$eval: as_slugid("lint_task")}
-            - {$eval: as_slugid("tests_task")}
-            - {$eval: as_slugid("rollback_test_task")}
-            - {$eval: as_slugid("packaging_test_task")}
-            - {$eval: as_slugid("version_check_task")}
-          scopes:
-            - secrets:get:project/relman/bugbug/deploy
-          created: {$fromNow: ''}
-          deadline: {$fromNow: '1 hour'}
-          provisionerId: aws-provisioner-v1
-          workerType: github-worker
-          payload:
-            features:
-              taskclusterProxy:
-                true
-            maxRunTime: 3600
-            image: python
-            command:
-              - "/bin/bash"
-              - "-lcx"
-              - "git clone ${repository} &&
-                 cd bugbug &&
-                 git checkout ${head_rev} &&
-                 python setup.py sdist bdist_wheel &&
-                 pip install twine &&
-                 python infra/pypi.py"
-          metadata:
-            name: bugbug PyPI release
-            description: bugbug PyPI release
-            owner: ${user}@users.noreply.github.com
-            source: ${repository}/raw/${head_rev}/.taskcluster.yml
-
-      - $if: 'tasks_for == "github-push" && head_branch[:10] == "refs/tags/"'
-        then:
-          dependencies:
-            - {$eval: as_slugid("docker_build")}
-          scopes:
-            - secrets:get:project/relman/bugbug/deploy
-          taskId: {$eval: as_slugid("docker_push")}
-          created: {$fromNow: ''}
-          deadline: {$fromNow: '4 hours'}
-          provisionerId: aws-provisioner-v1
-          workerType: github-worker
-          payload:
-            features:
-              taskclusterProxy:
-                true
-            maxRunTime: 3600
-            image: mozilla/taskboot:latest
-            env:
-              TASKCLUSTER_SECRET: project/relman/bugbug/deploy
-            command:
-              - taskboot
-              - push-artifact
-          metadata:
-            name: bugbug docker push
-            description: bugbug docker push
-            owner: ${user}@users.noreply.github.com
-            source: ${repository}/raw/${head_rev}/.taskcluster.yml
-
-      - $if: 'tasks_for == "github-push" && head_branch[:10] == "refs/tags/"'
-        then:
-          taskId: {$eval: as_slugid("update_hook")}
-          dependencies:
-            - {$eval: as_slugid("docker_push")}
-          scopes:
-            - hooks:modify-hook:project-relman/bugbug
-            - assume:hook-id:project-relman/bugbug
-          created: {$fromNow: ''}
-          deadline: {$fromNow: '5 hours'}
-          provisionerId: aws-provisioner-v1
-          workerType: github-worker
-          payload:
-            features:
-              taskclusterProxy:
-                true
-            maxRunTime: 3600
-            image: mozilla/taskboot:latest
-            env:
-              GIT_REPOSITORY: ${repository}
-              GIT_REVISION: ${head_rev}
-            command:
-              - taskboot
-              - build-hook
-              - infra/taskcluster-hook-pipeline-start.json
-              - project-relman
-              - bugbug
-          metadata:
-            name: bugbug update hooks
-            description: bugbug update hooks
-            owner: ${user}@users.noreply.github.com
-            source: ${repository}/raw/${head_rev}/.taskcluster.yml
+      - taskId: {$eval: as_slugid("docker_build_not_privileged")}
+        created: {$fromNow: ''}
+        deadline: {$fromNow: '3 hours'}
+        provisionerId: aws-provisioner-v1
+        workerType: releng-svc
+        payload:
+          maxRunTime: 10800
+          image: ubuntu
+          command:
+            - "/bin/sh"
+            - "-lcxe"
+            - "apt-get install sysbench && sysbench --test=fileio --threads=4 --file-test-mode=seqrewr prepare && sysbench --test=fileio --threads=1 --file-test-mode=rndrw run"
+          artifacts:
+            public/bugbug:
+              expires: {$fromNow: '2 weeks'}
+              path: /images
+              type: directory
+        metadata:
+          name: bugbug docker build
+          description: bugbug docker build
+          owner: ${user}@users.noreply.github.com
+          source: ${repository}/raw/${head_rev}/.taskcluster.yml
