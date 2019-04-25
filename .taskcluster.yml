@@ -41,7 +41,8 @@ tasks:
           maxRunTime: 10800
           image: docker
           command:
-            - "docker info"
+            - "docker"
+            - "info"
           artifacts:
             public/bugbug:
               expires: {$fromNow: '2 weeks'}
