@@ -36,8 +36,7 @@ tasks:
         provisionerId: aws-provisioner-v1
         workerType: releng-svc
         payload:
-          capabilities:
-            privileged: true
+          features:
             dind: true
           maxRunTime: 10800
           image: docker
@@ -49,9 +48,6 @@ tasks:
               expires: {$fromNow: '2 weeks'}
               path: /images
               type: directory
-        scopes:
-          - docker-worker:capability:privileged
-          - docker-worker:capability:dind
         metadata:
           name: bugbug docker build
           description: bugbug docker build
