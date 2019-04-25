@@ -39,11 +39,9 @@ tasks:
           capabilities:
             privileged: true
           maxRunTime: 10800
-          image: ubuntu
+          image: docker/docker
           command:
-            - "/bin/sh"
-            - "-lcxe"
-            - "apt-get update && apt-get install -y sysbench && sysbench --test=fileio --threads=4 --file-test-mode=seqrewr prepare && sysbench --test=fileio --threads=1 --file-test-mode=rndrw run"
+            - "docker info"
           artifacts:
             public/bugbug:
               expires: {$fromNow: '2 weeks'}
@@ -51,29 +49,6 @@ tasks:
               type: directory
         scopes:
           - docker-worker:capability:privileged
-        metadata:
-          name: bugbug docker build
-          description: bugbug docker build
-          owner: ${user}@users.noreply.github.com
-          source: ${repository}/raw/${head_rev}/.taskcluster.yml
-
-      - taskId: {$eval: as_slugid("docker_build_not_privileged")}
-        created: {$fromNow: ''}
-        deadline: {$fromNow: '3 hours'}
-        provisionerId: aws-provisioner-v1
-        workerType: releng-svc
-        payload:
-          maxRunTime: 10800
-          image: ubuntu
-          command:
-            - "/bin/sh"
-            - "-lcxe"
-            - "apt-get update && apt-get install -y sysbench && sysbench --test=fileio --threads=4 --file-test-mode=seqrewr prepare && sysbench --test=fileio --threads=1 --file-test-mode=rndrw run"
-          artifacts:
-            public/bugbug:
-              expires: {$fromNow: '2 weeks'}
-              path: /images
-              type: directory
         metadata:
           name: bugbug docker build
           description: bugbug docker build
