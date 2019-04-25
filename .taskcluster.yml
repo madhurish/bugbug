@@ -39,7 +39,7 @@ tasks:
           capabilities:
             privileged: true
           maxRunTime: 10800
-          image: docker/docker
+          image: docker
           command:
             - "docker info"
           artifacts:
