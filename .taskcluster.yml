@@ -37,9 +37,10 @@ tasks:
         workerType: releng-svc
         payload:
           features:
+            privileged: true
             dind: true
           maxRunTime: 10800
-          image: "docker:1.6.2-dind"
+          image: "docker:1.6.2"
           command:
             - "docker"
             - "info"
@@ -48,6 +49,8 @@ tasks:
               expires: {$fromNow: '2 weeks'}
               path: /images
               type: directory
+        scopes:
+          - docker-worker:capability:privileged
         metadata:
           name: bugbug docker build
           description: bugbug docker build
