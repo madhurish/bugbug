@@ -24,4 +24,13 @@ repos:
     -   id: mixed-line-ending
     -   id: name-tests-test
         args: ['--django']
+-   repo: local
+    hooks:
+    -   id: codespell
+        name: codespell
+        description: Checks for common misspellings in text files.
+        entry: codespell
+        language: system
+        types: [text]
+        exclude_types: [json]
 python_version: python3.6
